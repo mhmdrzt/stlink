@@ -393,7 +393,7 @@ endif()
 
 # MCU configuration files
 if (WIN32)
-set(CMAKE_CHIPS_DIR ./config/chips)
+    set(CMAKE_CHIPS_DIR ./config/chips)
 else ()
     set(CMAKE_CHIPS_DIR ${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}/config/chips)
 endif()

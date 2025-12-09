@@ -248,11 +248,13 @@ void init_chipids(char *dir_to_scan) {
 #include <fileapi.h>
 #include <strsafe.h>
 
+#define MY_CHIP_DIR "..\\config\\chips"
+
 void init_chipids(char *dir_to_scan) {
   HANDLE hFind = INVALID_HANDLE_VALUE;
   WIN32_FIND_DATAA ffd;
   char filepath[MAX_PATH] = {0};
-  DWORD filepathlen;
+  DWORD filepathlen = 0;
   int numslash;
   StringCchCopyA(filepath, STLINK_ARRAY_SIZE(filepath), dir_to_scan);
 
@@ -263,8 +265,13 @@ void init_chipids(char *dir_to_scan) {
   }
 
   filepath[filepathlen] = '\0';
+#ifndef MY_CHIP_DIR
   StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), "\\");
   StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), dir_to_scan);
+#else
+  StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), MY_CHIP_DIR);
+#endif // !MY_CHIP_DIR
+
   StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), "\\*.chip");
 
   hFind = FindFirstFileA(filepath, &ffd);
@@ -276,8 +283,12 @@ void init_chipids(char *dir_to_scan) {
 
   do {
     filepath[filepathlen] = '\0';
+#ifndef MY_CHIP_DIR
     StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), "\\");
     StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), dir_to_scan);
+#else
+    StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), MY_CHIP_DIR);
+#endif
     StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), "\\");
     StringCchCatA(filepath, STLINK_ARRAY_SIZE(filepath), ffd.cFileName);
     process_chipfile(filepath);
