@@ -237,6 +237,8 @@ struct _stlink {
 
     uint32_t otp_base;
     uint32_t otp_size;
+
+    uint8_t uid[UID_SIZE];
 };
 
 

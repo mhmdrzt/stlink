@@ -67,6 +67,7 @@ static void stlink_probe(enum connect_type connect, int32_t freq) {
     stlink_probe_usb_free(&stdevs, size);
 }
 
+
 static int32_t print_data(int32_t ac, char **av) {
     stlink_t* sl = NULL;
     enum connect_type connect = CONNECT_NORMAL;
@@ -125,8 +126,12 @@ static int32_t print_data(int32_t ac, char **av) {
     } else if(strcmp(av[1], "--descr") == 0) {
         const struct stlink_chipid_params *params = stlink_chipid_get_params(sl->chip_id);
         if(params == NULL) { return (-1); }
-
         printf("%s\n", params->dev_type);
+    } else if(strcmp(av[1], "--uid") == 0) {
+        for (int i = 0; i < UID_SIZE; i++) {
+            printf("%.2x ", sl->uid[i]);
+        }
+        printf("\r\n");
     }
 
     if(sl) {

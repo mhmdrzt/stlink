@@ -64,6 +64,7 @@ enum stm32_flash_type {
     STM32_FLASH_TYPE_L5_U5_H5  = 11,
     STM32_FLASH_TYPE_WB_WL     = 12,
     STM32_FLASH_TYPE_WB0       = 13,
+    STM32_FLASH_TYPE_AT        = 14,
 };
 
 /* STM32 chip-ids */

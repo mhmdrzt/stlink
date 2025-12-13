@@ -7,6 +7,7 @@
 #ifndef INFO_H
 #define INFO_H
 
+
 // static void usage(void);
 // static void stlink_print_version(stlink_t *sl);
 // static void stlink_print_info(stlink_t *sl);

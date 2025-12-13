@@ -123,8 +123,10 @@ void process_chipfile(char *fname) {
         ts->flash_type = STM32_FLASH_TYPE_L5_U5_H5;
       } else if(strcmp(value, "WB_WL") == 0) {
         ts->flash_type = STM32_FLASH_TYPE_WB_WL;
-      } else if(strcmp(value, "WB0") == 0) {
-        ts->flash_type = STM32_FLASH_TYPE_WB0;
+      } else if (strcmp(value, "WB0") == 0) {
+          ts->flash_type = STM32_FLASH_TYPE_WB0;
+      } else if (strcmp(value, "ARTERY") == 0) {
+          ts->flash_type = STM32_FLASH_TYPE_AT;
       } else {
         ts->flash_type = STM32_FLASH_TYPE_UNKNOWN;
       }
@@ -199,6 +201,18 @@ void process_chipfile(char *fname) {
       sscanf(buf, "%*s %n", &nc);
       if(sscanf(value, "%i", &ts->otp_size) < 1) {
         fprintf(stderr, "Failed to parse option size\n");
+      }
+    } else if (strcmp(word, "uid_base") == 0) {
+      buf[strlen(buf) - 1] = 0; // chomp newline
+      sscanf(buf, "%*s %n", &nc);
+      if (sscanf(value, "%i", &ts->uid_base) < 1) {
+        fprintf(stderr, "Failed to parse uid base address\n");
+      }
+    } else if (strcmp(word, "uid_size") == 0) {
+      buf[strlen(buf) - 1] = 0; // chomp newline
+      sscanf(buf, "%*s %n", &nc);
+      if (sscanf(value, "%i", &ts->uid_size) < 1) {
+        fprintf(stderr, "Failed to parse uid size\n");
       }
     } else {
       fprintf(stderr, "Unknown keyword in %s: %s\n", fname, word);

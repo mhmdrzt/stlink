@@ -12,3 +12,5 @@ bootrom_size 0x1800          // 6 KB
 option_base 0x1ffff800       // STM32_OPTION_BYTES_BASE_F0
 option_size 0x10             // 16 B
 flags swo
+uid_base 0x1FFFF7E8
+uid_size  0xc								// 12 B

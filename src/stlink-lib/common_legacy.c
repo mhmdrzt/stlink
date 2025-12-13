@@ -1236,6 +1236,7 @@ int32_t stlink_load_device_params(stlink_t *sl) {
     return (-1);
   }
 
+
   params = stlink_chipid_get_params(sl->chip_id);
 
   if(params == NULL) {
@@ -1343,6 +1344,15 @@ int32_t stlink_load_device_params(stlink_t *sl) {
       sl->chip_flags &= ~CHIP_F_HAS_DUAL_BANK;
   }
 
+  if (params->uid_base != 0 && params->uid_size <= UID_SIZE) { // valid uid property
+    uint16_t size = ((uint16_t)(params->uid_size) * sizeof(uint8_t)) / sizeof(uint32_t);
+    for (int i = 0; i < size; i++) {
+        uint16_t offset = i * sizeof(uint32_t);
+        int32_t err = stlink_read_mem32(sl, params->uid_base + offset, (uint16_t)4);
+        memcpy(&sl->uid[offset], sl->q_buf, sizeof(uint32_t));
+    }
+  }
+
   ILOG("%s: %u KiB SRAM, %u KiB flash in at least %u %s pages.\n",
       params->dev_type, (sl->sram_size / 1024), (sl->flash_size / 1024),
       (sl->flash_pgsz < 1024) ? sl->flash_pgsz : (sl->flash_pgsz / 1024),
@@ -1383,6 +1393,8 @@ int32_t stlink_target_connect(stlink_t *sl, enum connect_type connect) {
     // addition soft reset for halt before the first instruction
     stlink_soft_reset(sl, 1 /* halt on reset */);
   }
+
+
 
   if(stlink_current_mode(sl) != STLINK_DEV_DEBUG_MODE &&
         stlink_enter_swd_mode(sl)) {

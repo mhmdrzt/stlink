@@ -393,11 +393,12 @@ endif()
 
 # MCU configuration files
 if (WIN32)
-    set(CMAKE_CHIPS_DIR ./config/chips)
+    set(CMAKE_CHIPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}\\..\\config\\chips")
 else ()
     set(CMAKE_CHIPS_DIR ${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}/config/chips)
 endif()
 add_definitions( -DSTLINK_CHIPS_DIR="${CMAKE_CHIPS_DIR}" )
+add_definitions( -DUID_SIZE=12 )
 file(GLOB CHIP_FILES ${CMAKE_SOURCE_DIR}/config/chips/*.chip)
 install(FILES ${CHIP_FILES} DESTINATION ${CMAKE_CHIPS_DIR})
 

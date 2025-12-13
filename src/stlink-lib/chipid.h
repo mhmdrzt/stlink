@@ -23,6 +23,8 @@ struct stlink_chipid_params {
     uint32_t flags;
     uint32_t otp_base;
     uint32_t otp_size;
+    uint32_t uid_base;
+    uint32_t uid_size; // byte
   struct stlink_chipid_params *next;
 };
 
