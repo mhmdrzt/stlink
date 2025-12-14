@@ -38,6 +38,7 @@ static int32_t stlink_read_option_bytes_c0(stlink_t *sl, uint32_t *option_byte) 
   return stlink_read_option_control_register_c0(sl, option_byte);
 }
 
+
 /**
  * Write option control register C0
  * @param sl
@@ -71,6 +72,63 @@ static int32_t stlink_write_option_control_register_c0(stlink_t *sl, uint32_t op
 }
 
 /**
+ * Write option bytes AT
+ * @param sl
+ * @param addr of the memory mapped option bytes
+ * @param base option bytes
+ * @param len of option bytes
+ * @return 0 on success, -ve on failure.
+ */
+static int32_t stlink_write_option_bytes_at(stlink_t* sl, stm32_addr_t addr, uint8_t* base, uint32_t len) {
+  int32_t ret = 0;
+
+  if (len < 12 || addr != STM32_AT_OPTION_BYTES_BASE) {
+    WLOG("Only full write of option bytes area is supported\n");
+    return -1;
+  }
+
+  clear_flash_error(sl);
+
+  WLOG("Erasing option bytes\n");
+
+  /* erase option bytes */
+  stlink_write_debug32(sl, FLASH_AT_CTRL, (1 << FLASH_AT_CTRL_USDERS) | (1 << FLASH_AT_CTRL_USDULKS)); // mhmdrzt-TOCHECK: 
+  ret = stlink_write_debug32(sl, FLASH_AT_CTRL, (1 << FLASH_AT_CTRL_USDERS) | (1 << FLASH_AT_CTRL_ERSTR) | (1 << FLASH_AT_CTRL_USDULKS)); // mhmdrzt-TOCHECK: 
+  if (ret) {
+    return ret;
+  }
+
+  wait_flash_busy(sl);
+
+  ret = check_flash_error(sl);
+  if (ret) {
+    return ret;
+  }
+
+  WLOG("Writing option bytes to %#10x\n", addr);
+
+  /* Set the Option PG bit to enable programming */
+  stlink_write_debug32(sl, FLASH_AT_CTRL, (1 << FLASH_AT_CTRL_USDPRGM) | (1 << FLASH_AT_CTRL_USDULKS)); // mhmdrzt-TOCHECK: 
+
+  /* Use flash loader for write OP
+   * because flash memory writable by half word */
+  flash_loader_t fl;
+  ret = stlink_flash_loader_init(sl, &fl);
+  if (ret) {
+    return ret;
+  }
+  ret = stlink_flash_loader_run(sl, &fl, addr, base, len);
+  if (ret) {
+    return ret;
+  }
+
+  /* Reload option bytes */
+  stlink_write_debug32(sl, FLASH_AT_CTRL, (1 << FLASH_CR_OBL_LAUNCH));   // mhmdrzt-TOCHECK: this bit is reserved based on PM0068.page24
+
+  return check_flash_error(sl);
+}
+
+/**
  * Write option bytes C0
  * @param sl
  * @param addr of the memory mapped option bytes
@@ -83,6 +141,17 @@ static int32_t stlink_write_option_bytes_c0(stlink_t *sl, stm32_addr_t addr, uin
   (void)len;
 
   return stlink_write_option_control_register_c0(sl, *(uint32_t*)base);
+}
+
+/**
+ * Read option control register AT
+ * @param sl
+ * @param option_byte
+ * @return 0 on success, -ve on failure.
+ */
+int32_t stlink_read_option_control_register_at(stlink_t* sl, uint32_t* option_byte) {
+  DLOG("@@@@ Read option control register byte from %#10x\n", FLASH_AT_USD);
+  return stlink_read_debug32(sl, FLASH_AT_USD, option_byte);
 }
 
 /**
@@ -117,7 +186,7 @@ static int32_t stlink_write_option_bytes_f0(stlink_t *sl, stm32_addr_t addr, uin
   WLOG("Erasing option bytes\n");
 
   /* erase option bytes */
-  stlink_write_debug32(sl, FLASH_CR, (1 << FLASH_CR_OPTER) | (1 << FLASH_CR_OPTWRE));
+  stlink_write_debug32(sl, FLASH_CR, (1 << FLASH_CR_OPTER) | (1 << FLASH_CR_OPTWRE)); // mhmdrzt-TOCHECK: Active level is 0 and this bit is high only if unlock procedure is completed successfuly
   ret = stlink_write_debug32(sl, FLASH_CR, (1 << FLASH_CR_OPTER) | (1 << FLASH_CR_STRT) | (1 << FLASH_CR_OPTWRE));
   if(ret) {
     return ret;
@@ -148,9 +217,102 @@ static int32_t stlink_write_option_bytes_f0(stlink_t *sl, stm32_addr_t addr, uin
   }
 
   /* Reload option bytes */
-  stlink_write_debug32(sl, FLASH_CR, (1 << FLASH_CR_OBL_LAUNCH));
+  stlink_write_debug32(sl, FLASH_CR, (1 << FLASH_CR_OBL_LAUNCH));  // mhmdrzt-TOCHECK: this bit is reserved based on PM0068.page24
 
   return check_flash_error(sl);
+}
+
+
+/**
+ * Write option control register AT
+ * @param sl
+ * @param option_cr
+ * @return 0 on success, -ve on failure.
+ */
+static int32_t stlink_write_option_control_register_at(stlink_t* sl, uint32_t option_cr) { // mhmdrzt-TODO: format e in 32 bit e ke migire chejoorie
+  int32_t ret = 0;
+  uint16_t opt_val[8];
+  uint32_t protection, optiondata;
+  uint16_t user_options, user_data, rdp;
+  uint32_t option_offset, user_data_offset;
+
+  ILOG("Asked to write option control register %#10x to %#010x.\n", option_cr, FLASH_AT_USD);
+
+  return -1;
+
+  /* Clear errors */
+  clear_flash_error(sl);
+
+  /* Retrieve current values */
+  ret = stlink_read_debug32(sl, FLASH_AT_USD, &optiondata);
+  if (ret) {
+    return ret;
+  }
+  ret = stlink_read_debug32(sl, FLASH_AT_EPPS, &protection);
+  if (ret) {
+    return ret;
+  }
+
+
+  option_offset = 6; // mhmdrzt-TOCHECK: offset
+  user_data_offset = 16;
+  /*rdp = FLASH_AT_FAP_RELIEVE_KEY;*/
+
+  ///* Translate OBR value to flash store structure
+  // * F0: RM0091, Option byte description, pp. 75-78
+  // * F1: PM0075, Option byte description, pp. 19-22
+  // * F3: RM0316, Option byte description, pp. 85-87 */
+  //switch (sl->chip_id)
+  //{
+  //case 0x422: /* STM32F30x */
+  //case 0x432: /* STM32F37x */
+  //case 0x438: /* STM32F303x6/8 and STM32F328 */
+  //case 0x446: /* STM32F303xD/E and STM32F398xE */
+  //case 0x439: /* STM32F302x6/8 */
+  //case 0x440: /* STM32F05x */
+  //case 0x444: /* STM32F03x */
+  //case 0x445: /* STM32F04x */
+  //case 0x448: /* STM32F07x */
+  //case 0x442: /* STM32F09x */
+  //  option_offset = 6;
+  //  user_data_offset = 16;
+  //  rdp = 0x55AA;
+  //  break;
+  //default:
+  //  option_offset = 0;
+  //  user_data_offset = 10;
+  //  rdp = 0x5AA5;
+  //  break;
+  //}
+
+  user_options = (option_cr >> option_offset >> 2) & 0xFFFF; 
+  user_data = (option_cr >> user_data_offset) & 0xFFFF;
+
+#define VAL_WITH_COMPLEMENT(v) (uint16_t) (((v)&0xFF) | (((~(v))<<8)&0xFF00))
+  rdp = VAL_WITH_COMPLEMENT(FLASH_AT_FAP_RELIEVE_KEY);
+  opt_val[0] = (option_cr & (1 << 1/*OPT_READOUT*/)) ? 0xFFFF : rdp;
+  opt_val[1] = VAL_WITH_COMPLEMENT(user_options);
+  opt_val[2] = VAL_WITH_COMPLEMENT(user_data);
+  opt_val[3] = VAL_WITH_COMPLEMENT(user_data >> 8);
+  opt_val[4] = VAL_WITH_COMPLEMENT(protection);
+  opt_val[5] = VAL_WITH_COMPLEMENT(protection >> 8);
+  opt_val[6] = VAL_WITH_COMPLEMENT(protection >> 16);
+  opt_val[7] = VAL_WITH_COMPLEMENT(protection >> 24);
+
+#undef VAL_WITH_COMPLEMENT
+
+  /* Write bytes and check errors */
+  ret = stlink_write_option_bytes_at(sl, STM32_AT_OPTION_BYTES_BASE, (uint8_t*)opt_val, sizeof(opt_val)); // The same as Artery Chips
+  if (ret)
+    return ret;
+
+  ret = check_flash_error(sl);
+  if (!ret) {
+    ILOG("Wrote option bytes %#010x to %#010x!\n", option_cr,
+      FLASH_OBR);
+  }
+
+  return ret;
 }
 
 /**
@@ -903,6 +1065,9 @@ int32_t stlink_write_option_bytes(stlink_t *sl, stm32_addr_t addr, uint8_t *base
   }
 
   switch (sl->flash_type) {
+  case STM32_FLASH_TYPE_AT:
+    ret = stlink_write_option_bytes_at(sl, addr, base, len);
+    break;
   case STM32_FLASH_TYPE_C0:
     ret = stlink_write_option_bytes_c0(sl, addr, base, len);
     break;
@@ -965,7 +1130,7 @@ int32_t stlink_fwrite_option_bytes(stlink_t *sl, const char *path, stm32_addr_t 
   int32_t err;
   mapped_file_t mf = MAPPED_FILE_INITIALIZER;
 
-  if(map_file(&mf, path) == -1) {
+  if(map_file(&mf, path) == -1) { // mhmdrzt-TOCHECK: wth is this
     ELOG("map_file() == -1\n");
     return (-1);
   }
@@ -994,6 +1159,8 @@ int32_t stlink_read_option_control_register32(stlink_t *sl, uint32_t *option_byt
   }
 
   switch (sl->flash_type) {
+  case STM32_FLASH_TYPE_AT:
+    return stlink_read_option_control_register_at(sl, option_byte);
   case STM32_FLASH_TYPE_C0:
     return stlink_read_option_control_register_c0(sl, option_byte);
   case STM32_FLASH_TYPE_F0_F1_F3:
@@ -1030,6 +1197,9 @@ int32_t stlink_write_option_control_register32(stlink_t *sl, uint32_t option_cr)
   }
 
   switch (sl->flash_type) {
+  case STM32_FLASH_TYPE_AT:
+    ret = stlink_write_option_control_register_at(sl, option_cr);
+    break;
   case STM32_FLASH_TYPE_C0:
     ret = stlink_write_option_control_register_c0(sl, option_cr);
     break;

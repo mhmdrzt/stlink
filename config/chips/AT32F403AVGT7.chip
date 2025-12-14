@@ -7,10 +7,10 @@ flash_type ARTERY
 flash_size_reg 0x1FFFF7E0
 flash_pagesize 0x800         // 2 KB
 sram_size 0x18000             // 96 KB
-bootrom_base 0x1FFFB000
+bootrom_base 0x1FFFB0000
 bootrom_size 0x4000          // 16 KB
 option_base 0x1ffff800       // STM32_OPTION_BYTES_BASE_F0
 option_size 0x30             // 48 B
-flags none
+flags dualbank  						 // Dual bank
 uid_base 0x1FFFF7E8
 uid_size  0xc								// 12 B

@@ -124,9 +124,9 @@ void process_chipfile(char *fname) {
       } else if(strcmp(value, "WB_WL") == 0) {
         ts->flash_type = STM32_FLASH_TYPE_WB_WL;
       } else if (strcmp(value, "WB0") == 0) {
-          ts->flash_type = STM32_FLASH_TYPE_WB0;
+        ts->flash_type = STM32_FLASH_TYPE_WB0;
       } else if (strcmp(value, "ARTERY") == 0) {
-          ts->flash_type = STM32_FLASH_TYPE_AT;
+        ts->flash_type = STM32_FLASH_TYPE_AT;
       } else {
         ts->flash_type = STM32_FLASH_TYPE_UNKNOWN;
       }

@@ -206,7 +206,7 @@ int32_t stlink_flash_loader_init(stlink_t *sl, flash_loader_t *fl) {
     if(sl->flash_type == STM32_FLASH_TYPE_H7) {
         fl->iwdg_kr = STM32H7_WDG_KR;
     } else {
-        fl->iwdg_kr = STM32F0_WDG_KR;
+        fl->iwdg_kr = STM32F0_WDG_KR; // Same as AT Chips
     }
 
     /* Clear Fault Status Register for handling flash loader error */
@@ -259,8 +259,14 @@ static int32_t loader_v_dependent_assignment(stlink_t *sl,
 int32_t stlink_flash_loader_write_to_sram(stlink_t *sl, stm32_addr_t* addr, uint32_t* size) {
     const uint8_t* loader_code;
     uint32_t loader_size;
-
-    if(sl->chip_id == STM32_CHIPID_L1_MD ||
+    if (sl->chip_id == STM32_CHIPID_403ARCT7 ||
+        sl->chip_id == STM32_CHIPID_403AVCT7 || 
+        sl->chip_id == STM32_CHIPID_403AVGT7 || 
+        sl->chip_id == STM32_CHIPID_413CBT7) {
+      /* The same flashloader as stm32f0 */
+      loader_code = loader_code_stm32vl;
+      loader_size = sizeof(loader_code_stm32vl);
+    } else if(sl->chip_id == STM32_CHIPID_L1_MD ||
         sl->chip_id == STM32_CHIPID_L1_CAT2 ||
         sl->chip_id == STM32_CHIPID_L1_MD_PLUS ||
         sl->chip_id == STM32_CHIPID_L1_MD_PLUS_HD ||
@@ -525,8 +531,10 @@ static void set_flash_cr_pg(stlink_t *sl, uint32_t bank) {
   uint32_t cr_reg, x;
 
   x = read_flash_cr(sl, bank);
-
-  if(sl->flash_type == STM32_FLASH_TYPE_C0) {
+  if (sl->flash_type == STM32_FLASH_TYPE_AT) {
+    cr_reg = (bank == BANK_1) ? FLASH_AT_CTRL : FLASH_AT_CTRL2;
+    x |= (1 << FLASH_AT_CTRL_FPRGM);
+  } else if(sl->flash_type == STM32_FLASH_TYPE_C0) {
     cr_reg = STM32_FLASH_C0_CR;
     x |= (1 << FLASH_CR_PG);
   } else if(sl->flash_type == STM32_FLASH_TYPE_F2_F4) {
@@ -566,6 +574,10 @@ static void set_dma_state(stlink_t *sl, flash_loader_t *fl, int32_t bckpRstr) {
   rcc = rcc_dma_mask = value = 0;
 
   switch (sl->flash_type) {
+  case STM32_FLASH_TYPE_AT:
+    rcc = STM32_AT_CRM_AHBEN;
+    rcc_dma_mask = (1 << STM32_AT_AHBEN_DMA1EN) | (1 << STM32_AT_AHBEN_DMA2EN);
+    break;
   case STM32_FLASH_TYPE_C0:
     rcc = STM32C0_RCC_AHBENR;
     rcc_dma_mask = STM32C0_RCC_DMAEN;
@@ -637,8 +649,24 @@ int32_t stlink_flashloader_start(stlink_t *sl, flash_loader_t *fl) {
   wait_flash_busy(sl);
   // Clear errors
   clear_flash_error(sl);
+  if (sl->flash_type == STM32_FLASH_TYPE_AT) {
+    ILOG("Starting Flash write for ArteryChips\n");
 
-  if((sl->flash_type == STM32_FLASH_TYPE_F2_F4) ||
+    // flash loader initialisation
+    if (stlink_flash_loader_init(sl, fl) == -1) {
+      ELOG("stlink_flash_loader_init() == -1\n");
+      return (-1);
+    }
+
+    // unlock flash
+    unlock_flash_if(sl);
+
+    // set programming mode
+    set_flash_cr_pg(sl, BANK_1);
+    if (sl->chip_flags & CHIP_F_HAS_DUAL_BANK) {
+      set_flash_cr_pg(sl, BANK_2);
+    }
+  } else if ((sl->flash_type == STM32_FLASH_TYPE_F2_F4) ||
       (sl->flash_type == STM32_FLASH_TYPE_F7) ||
       (sl->flash_type == STM32_FLASH_TYPE_L4)) {
     ILOG("Starting Flash write for F2/F4/F7/L4\n");
@@ -663,7 +691,6 @@ int32_t stlink_flashloader_start(stlink_t *sl, flash_loader_t *fl) {
       ELOG("Failed to read Target voltage\n");
       return (-1);
     }
-
     if(sl->flash_type == STM32_FLASH_TYPE_L4) {
       // L4 does not have a byte-write mode
       if(voltage < 1710) {
@@ -862,7 +889,7 @@ int32_t stlink_flashloader_write(stlink_t *sl, flash_loader_t *fl, stm32_addr_t 
       // TODO: check redo write operation
     }
     fprintf(stdout, "\n");
-  } else if((sl->flash_type == STM32_FLASH_TYPE_F0_F1_F3) || (sl->flash_type == STM32_FLASH_TYPE_F1_XL)) {
+  } else if((sl->flash_type == STM32_FLASH_TYPE_F0_F1_F3) || (sl->flash_type == STM32_FLASH_TYPE_F1_XL) || (sl->flash_type == STM32_FLASH_TYPE_AT)) {
     int32_t write_block_count = 0;
     for(off = 0; off < len; off += sl->flash_pgsz) {
       // adjust last write size
@@ -957,10 +984,12 @@ int32_t stlink_flashloader_stop(stlink_t *sl, flash_loader_t *fl) {
       (sl->flash_type == STM32_FLASH_TYPE_H7) ||
       (sl->flash_type == STM32_FLASH_TYPE_L4) ||
       (sl->flash_type == STM32_FLASH_TYPE_L5_U5_H5) ||
-      (sl->flash_type == STM32_FLASH_TYPE_WB_WL)) {
+      (sl->flash_type == STM32_FLASH_TYPE_WB_WL) ||
+      (sl->flash_type == STM32_FLASH_TYPE_AT)) {
 
     clear_flash_cr_pg(sl, BANK_1);
     if((sl->flash_type == STM32_FLASH_TYPE_H7 && sl->chip_flags & CHIP_F_HAS_DUAL_BANK) ||
+        (sl->flash_type == STM32_FLASH_TYPE_AT && sl->chip_flags & CHIP_F_HAS_DUAL_BANK) ||
         sl->flash_type == STM32_FLASH_TYPE_F1_XL) {
       clear_flash_cr_pg(sl, BANK_2);
     }

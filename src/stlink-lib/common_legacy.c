@@ -77,6 +77,11 @@ static void stop_wdg_in_debug(stlink_t *sl) {
   uint32_t value;
 
   switch (sl->flash_type) {
+  case STM32_FLASH_TYPE_AT:
+    dbgmcu_cr = STM32_AT_DBGMCU_CR;
+    set = (1 << STM32_AT_DBGMCU_WWDT_PAUSE) |
+      (1 << STM32_AT_DBGMCU_WDT_PAUSE);
+    break;
   case STM32_FLASH_TYPE_F0_F1_F3:
   case STM32_FLASH_TYPE_F1_XL:
   case STM32_FLASH_TYPE_G4:

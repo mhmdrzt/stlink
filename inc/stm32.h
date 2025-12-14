@@ -64,7 +64,7 @@ enum stm32_flash_type {
     STM32_FLASH_TYPE_L5_U5_H5  = 11,
     STM32_FLASH_TYPE_WB_WL     = 12,
     STM32_FLASH_TYPE_WB0       = 13,
-    STM32_FLASH_TYPE_AT        = 14,
+    STM32_FLASH_TYPE_AT        = 14
 };
 
 /* STM32 chip-ids */
@@ -150,6 +150,10 @@ enum stm32_chipids {
     STM32_CHIPID_C071xx           = 0x493, /* RM0490 (revision 5), section 30.10.1 "DBG device ID code register (DBG_IDCODE)" */
     STM32_CHIPID_WB55             = 0x495,
     STM32_CHIPID_WLE              = 0x497,
+    STM32_CHIPID_403AVGT7         = 0x344,
+    STM32_CHIPID_403AVCT7         = 0x240,
+    STM32_CHIPID_403ARCT7         = 0x241,
+    STM32_CHIPID_413CBT7          = 0x1c3,
 };
 
 /* Constant STM32 option bytes base memory address */
@@ -173,6 +177,7 @@ enum stm32_chipids {
 #define STM32_OPTION_BYTES_BASE_F1 ((uint32_t) 0x1ffff800)
 #define STM32_OPTION_BYTES_BASE_F3 ((uint32_t) 0x1ffff800)
 #define STM32_OPTION_BYTES_BASE_G4 ((uint32_t) 0x1ffff800)
+#define STM32_AT_OPTION_BYTES_BASE ((uint32_t) 0x1ffff800)
 
 /* ============ */
 /* Old defines from common_legacy.c are below */
@@ -248,5 +253,18 @@ enum stm32_chipids {
 
 #define STM32L5_PWR_CR1 0x40007000                      // RM0438, p. 93,324
 #define STM32L5_PWR_CR1_VOS 9
+
+
+#pragma region ArteryChip
+
+// AHBEN masks
+#define STM32_AT_AHBEN_DMA1EN 0
+#define STM32_AT_AHBEN_DMA2EN 0
+
+// RCC registers
+#define STM32_AT_CRM_BASE 0x40021000
+#define STM32_AT_CRM_AHBEN (STM32_AT_CRM_BASE + 0x014)
+#pragma endregion
+
 
 #endif // STM32_H

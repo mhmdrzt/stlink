@@ -62,7 +62,7 @@ int32_t check_file(stlink_t *sl, mapped_file_t *mf, stm32_addr_t addr) {
   return (0);
 }
 
-int32_t map_file(mapped_file_t *mf, const char *path) {
+int32_t map_file(mapped_file_t *mf, const char *path) { // mhmdrzt-TOCHECK
   int32_t error = -1;
   struct stat st;
 
