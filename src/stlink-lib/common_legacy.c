@@ -1146,8 +1146,12 @@ int32_t stlink_fread(stlink_t *sl, const char *path, bool is_ihex, stm32_addr_t 
     struct stlink_fread_worker_arg arg = {fd};
     error = stlink_read(sl, addr, size, &stlink_fread_worker, &arg);
   }
-
-  close(fd);
+  if (is_ihex && (error == 0)) {
+    /* Do nothing! file is already closed in stlink_fread_ihex_finalize */
+  }
+  else {
+    close(fd);
+  }
   return (error);
 }
 
