@@ -263,7 +263,19 @@ int32_t main(int32_t ac, char** av) {
         } else {
             stlink_run(sl, RUN_NORMAL);
         }
+    } else if (o.cmd == CMD_RDPLOCK) {
+        
+    } else if (o.cmd == CMD_RDP_UNLOCK) {
     
+    } else if (o.cmd == CMD_GETRDP) { 
+        int rdp = 0;
+        if (stlink_rdp_get(sl, &rdp)) {
+            printf("Failed to get RDP state!\n");
+            goto on_error;
+        }
+        else {
+          printf("%d\n", rdp);
+        }
     } else {
 
         // read

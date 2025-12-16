@@ -235,6 +235,18 @@ int32_t flash_get_opts(struct flash_opts* o, int32_t ac, char** av) {
             if(o->cmd != FLASH_CMD_NONE) { return (-1); }
 
             o->cmd = CMD_RESET;
+        } else if (strcmp(av[0], "rdplock") == 0) {
+            if (o->cmd != FLASH_CMD_NONE) { return (-1); }
+
+            o->cmd = CMD_RDPLOCK;
+        } else if (strcmp(av[0], "rdpunlock") == 0) {
+            if (o->cmd != FLASH_CMD_NONE) { return (-1); }
+
+            o->cmd = CMD_RDP_UNLOCK;
+        } else if (strcmp(av[0], "getrdp") == 0) {
+            if (o->cmd != FLASH_CMD_NONE) { return (-1); }
+
+            o->cmd = CMD_GETRDP;
         } else {
             break;
         }

@@ -43,5 +43,6 @@ int32_t stlink_read_option_bytes32(stlink_t *sl, uint32_t* option_byte);
 int32_t stlink_write_option_bytes32(stlink_t *sl, uint32_t option_byte);
 int32_t stlink_read_option_bytes_boot_add32(stlink_t *sl, uint32_t* option_byte);
 int32_t stlink_write_option_bytes_boot_add32(stlink_t *sl, uint32_t option_bytes_boot_add);
-
+int32_t stlink_rdp_set(stlink_t* sl, uint32_t rdp_state);
+int32_t stlink_rdp_get(stlink_t* sl, uint32_t* rdp_state);
 #endif // OPTION_BYTES_H

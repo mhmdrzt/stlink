@@ -1406,3 +1406,58 @@ int32_t stlink_write_option_bytes_boot_add32(stlink_t *sl, uint32_t option_bytes
 
   return ret;
 }
+/**
+ * Set read out protection state
+ * @param sl: stlink context
+ * @param rdp_state: on 0 disable rdp, otherwise enable rdp
+ * @return 0 for success, -ve for failure
+ */
+int32_t stlink_rdp_set(stlink_t* sl, uint32_t rdp_state) {
+
+}
+
+/**
+ * Get read out protection state
+ * @param sl: stlink context
+ * @param *rdp_state: on 0 rdp is disabled, on 1 rdp is enabled
+ * @return 0 for success, -ve for failure
+ */
+int32_t stlink_rdp_get(stlink_t* sl, uint32_t* rdp_state) {
+  int32_t retval = -1;
+  uint32_t opt = 0xffffffff;
+
+
+  /*
+   * ST chips, flash register (OBR) have RDPRT section (1 or 2 bit) and the first bit indicates if protection (level >= 1) is enabled
+   * AT chips, flash register (USD) have FAP section (1 bit) and it indicates if protection is enabled or not.
+   */
+  
+  retval = stlink_read_option_control_register32(sl, &opt); // opt as control
+  if (sl->flash_type == STM32_FLASH_TYPE_F0_F1_F3) {
+    if (retval == -1 || (opt & (1 << 0))) // or option control register error
+    {
+      fprintf(stdout, "could not read option bytes (%d)\n", -1);
+      return retval;
+    }
+    ///* Check option bytes error flag */
+    //if (opt & (1 << 0)) {
+    //  // mhmdrzt-TODO: handle this state
+    //}
+    *rdp_state = (opt >> 1) & 1;
+    return retval;
+  }
+  else if (sl->flash_type == STM32_FLASH_TYPE_AT) {
+    if (retval == -1 || (opt & (1 << FLASH_AT_USD_USDERR))) // or option control register error
+    {
+      fprintf(stdout, "could not read option bytes (%d)\n", -1);
+      return retval;
+    }
+    *rdp_state = (opt >> FLASH_AT_USD_FAP) & 1;
+    return retval;
+  }
+  else {
+    /* This command is not supported in these chips */
+    fprintf(stdout, "This command is not supported in this chip!\n");
+    return -1;
+  }
+}

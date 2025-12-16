@@ -61,4 +61,7 @@ int32_t stlink_write_otp(stlink_t *sl, stm32_addr_t addr, uint8_t *base,
                          uint32_t len);
 void stlink_fwrite_finalize(stlink_t *, stm32_addr_t);
 
+
+
+
 #endif // COMMON_FLASH_H
