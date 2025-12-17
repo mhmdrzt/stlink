@@ -229,7 +229,7 @@ static int32_t stlink_write_option_bytes_f0(stlink_t *sl, stm32_addr_t addr, uin
  * @param option_cr
  * @return 0 on success, -ve on failure.
  */
-static int32_t stlink_write_option_control_register_at(stlink_t* sl, uint32_t option_cr) { // mhmdrzt-TODO: format e in 32 bit e ke migire chejoorie
+static int32_t stlink_write_option_control_register_at(stlink_t* sl, uint32_t option_cr) {
   int32_t ret = 0;
   uint16_t opt_val[8];
   uint32_t protection, optiondata;
@@ -237,8 +237,6 @@ static int32_t stlink_write_option_control_register_at(stlink_t* sl, uint32_t op
   uint32_t option_offset, user_data_offset;
 
   ILOG("Asked to write option control register %#10x to %#010x.\n", option_cr, FLASH_AT_USD);
-
-  return -1;
 
   /* Clear errors */
   clear_flash_error(sl);
@@ -254,8 +252,8 @@ static int32_t stlink_write_option_control_register_at(stlink_t* sl, uint32_t op
   }
 
 
-  option_offset = 6; // mhmdrzt-TOCHECK: offset
-  user_data_offset = 16;
+  option_offset = 0; // System setting byte offset (SSB) - 2
+  user_data_offset = 10; // FLASH_USD[17:10] & FLASH_USD[25:18]
   /*rdp = FLASH_AT_FAP_RELIEVE_KEY;*/
 
   ///* Translate OBR value to flash store structure
@@ -290,7 +288,7 @@ static int32_t stlink_write_option_control_register_at(stlink_t* sl, uint32_t op
 
 #define VAL_WITH_COMPLEMENT(v) (uint16_t) (((v)&0xFF) | (((~(v))<<8)&0xFF00))
   rdp = VAL_WITH_COMPLEMENT(FLASH_AT_FAP_RELIEVE_KEY);
-  opt_val[0] = (option_cr & (1 << 1/*OPT_READOUT*/)) ? 0xFFFF : rdp;
+  opt_val[0] = (option_cr & (1 << 1/*FAP*/)) ? 0xFFFF : rdp;
   opt_val[1] = VAL_WITH_COMPLEMENT(user_options);
   opt_val[2] = VAL_WITH_COMPLEMENT(user_data);
   opt_val[3] = VAL_WITH_COMPLEMENT(user_data >> 8);
@@ -1413,7 +1411,49 @@ int32_t stlink_write_option_bytes_boot_add32(stlink_t *sl, uint32_t option_bytes
  * @return 0 for success, -ve for failure
  */
 int32_t stlink_rdp_set(stlink_t* sl, uint32_t rdp_state) {
+  int32_t retval = -1;
+  if (sl->flash_type == STM32_FLASH_TYPE_F0_F1_F3 || sl->flash_type == STM32_FLASH_TYPE_AT) {
+    /* Read option byte control register */
+    uint32_t opt_ctrl = 0xFFFFFFFF;
+    retval = stlink_read_option_control_register32(sl, &opt_ctrl);
+    if (retval == -1) 
+    {
+      fprintf(stdout, "could not read option control register (%d)\n", -1);
+      return retval;
+    }
+    /* Keep all bits except RDPRT.BIT_0 (FAP in AT) */
+    opt_ctrl &= 0xFFFFFFFD;
+    if (rdp_state) { // activate rdp
+      opt_ctrl |= (1 << 1); // RDPRT.BIT_0 (FAP in AT)
+    }
+    retval = stlink_write_option_control_register32(sl, opt_ctrl); // RDPRT ((FAP in AT)) key will be overwrited in this function based on 
 
+    
+    ///* In Artery devices, flash loaders fails first time and a reset should be performed */
+    //if (retval == -1 && sl->flash_type == STM32_FLASH_TYPE_AT) {
+    //  /* Reset target */
+    //  if (stlink_reset(sl, RESET_AUTO)) {
+    //    uint32_t rdp_flag = 0xffffffff;
+    //    if (stlink_rdp_get(sl, &rdp_flag)) {
+    //      if (rdp_flag == 0) {
+    //        retval = 0; // success
+    //      }
+    //    }
+    //  }
+    //}
+
+    if (retval == -1)
+    {
+      fprintf(stdout, "could not write option control register (%d)\n", -1);
+      return retval;
+    }
+    return retval;
+  }
+  else {
+    /* This command is not supported in these chips */
+    fprintf(stdout, "This command is not supported in this chip!\n");
+    return -1;
+  }
 }
 
 /**
@@ -1437,7 +1477,7 @@ int32_t stlink_rdp_get(stlink_t* sl, uint32_t* rdp_state) {
     if (retval == -1 || (opt & (1 << 0))) // or option control register error
     {
       fprintf(stdout, "could not read option bytes (%d)\n", -1);
-      return retval;
+      return -1;
     }
     ///* Check option bytes error flag */
     //if (opt & (1 << 0)) {

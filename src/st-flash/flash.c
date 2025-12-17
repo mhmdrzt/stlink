@@ -264,11 +264,17 @@ int32_t main(int32_t ac, char** av) {
             stlink_run(sl, RUN_NORMAL);
         }
     } else if (o.cmd == CMD_RDPLOCK) {
-        
+        if (stlink_rdp_set(sl, 1)) {
+            printf("Failed to lock device!\n");
+            goto on_error;
+        }
     } else if (o.cmd == CMD_RDP_UNLOCK) {
-    
-    } else if (o.cmd == CMD_GETRDP) { 
-        int rdp = 0;
+        if (stlink_rdp_set(sl, 0)) {
+            printf("Failed to unlock device!\n");
+            goto on_error;
+        }
+    } else if (o.cmd == CMD_GETRDP) {
+        int rdp = 0xffffffff;
         if (stlink_rdp_get(sl, &rdp)) {
             printf("Failed to get RDP state!\n");
             goto on_error;
@@ -277,7 +283,6 @@ int32_t main(int32_t ac, char** av) {
           printf("%d\n", rdp);
         }
     } else {
-
         // read
         if((o.area == FLASH_MAIN_MEMORY) || (o.area == FLASH_SYSTEM_MEMORY)) {
             if((o.size == 0) && (o.addr >= sl->flash_base) && (o.addr < sl->flash_base + sl->flash_size)) {
