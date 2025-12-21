@@ -177,6 +177,7 @@ set(STLINK_HEADERS
         inc/stm32_flash.h
         src/stlink-lib/calculate.h
         src/stlink-lib/chipid.h
+        src/stlink-lib/chips_embed.h
         src/stlink-lib/common_flash.h
         src/stlink-lib/flash_loader.h
         src/stlink-lib/helper.h
@@ -196,6 +197,7 @@ set(STLINK_HEADERS
 set(STLINK_SOURCE
         src/stlink-lib/calculate.c
         src/stlink-lib/chipid.c
+        src/stlink-lib/chips_embed.c
         src/stlink-lib/common_flash.c
         src/stlink-lib/common_legacy.c
         src/stlink-lib/flash_loader.c
@@ -393,6 +395,7 @@ endif()
 
 # MCU configuration files
 if (WIN32)
+    add_definitions( -DEMBED_CHIPS=12 )
     set(CMAKE_CHIPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}\\..\\config\\chips")
 else ()
     set(CMAKE_CHIPS_DIR ${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}/config/chips)

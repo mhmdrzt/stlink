@@ -18,6 +18,45 @@
 // #include <ctype.h> // TODO: Check use
 // #include <errno.h> // TODO: Check use
 
+#ifdef EMBED_CHIPS
+
+#include "chips_embed.h"
+
+
+
+static uint32_t arrgets(char* buff, int len_max, char chip_idx) {
+  static uint32_t chip_str_off = 0;
+  static char last_chip_idx = -1;
+  uint32_t chips_str_len = strlen(chips_str);
+
+  /* Read line */
+  uint32_t i;
+  for (i = 0; i < 256; i++) {
+    if (chip_str_off >= chips_str_len) return NULL;
+    buff[i] = chips_str[chip_str_off];
+    chip_str_off++;
+    if (buff[i] == '\n' || buff[i] == '\r' || buff[i] == NULL) { // end of line
+      break;
+    }
+  }
+  if (i < 255) { // string termination
+    buff[i + 1] = NULL;
+  }
+  else
+  {
+    return NULL;
+  }
+
+  if (strcmp(buff, NEW_FILE_STR) == 0) {
+    return NULL;
+  }
+  else
+  {
+    return 1;
+  }
+}
+#endif
+
 static struct stlink_chipid_params *devicelist;
 
 void dump_a_chip(struct stlink_chipid_params *dev) {
@@ -36,6 +75,8 @@ void dump_a_chip(struct stlink_chipid_params *dev) {
   DLOG("flags %d\n\n", dev->flags);
   DLOG("otp_base %d\n\n", dev->otp_base);
   DLOG("otp_size %d\n\n", dev->otp_size);
+  DLOG("uid_base %d\n\n", dev->uid_base);
+  DLOG("uid_size %d\n\n", dev->uid_size);
 }
 
 struct stlink_chipid_params *stlink_chipid_get_params(uint32_t chip_id) {
@@ -51,12 +92,14 @@ struct stlink_chipid_params *stlink_chipid_get_params(uint32_t chip_id) {
 }
 
 void process_chipfile(char *fname) {
+#ifndef EMBED_CHIPS
   FILE *fp;
+#endif
   char *p, buf[256];
   char word[64], value[64];
   struct stlink_chipid_params *ts;
   int32_t nc;
-
+#ifndef EMBED_CHIPS
   // fprintf (stderr, "processing chip-id file %s.\n", fname);
   fp = fopen(fname, "r");
 
@@ -64,11 +107,13 @@ void process_chipfile(char *fname) {
     perror(fname);
     return;
   }
-
+#endif
   ts = calloc(1, sizeof(struct stlink_chipid_params));
-
+#ifndef EMBED_CHIPS
   while (fgets(buf, sizeof(buf), fp) != NULL) {
-
+#else
+  while (arrgets(buf, sizeof(buf), *fname) != NULL) {
+#endif
     if(strncmp(buf, "#", strlen("#")) == 0)
       continue; // ignore comments
 
@@ -185,7 +230,11 @@ void process_chipfile(char *fname) {
         } else if(strcmp(p, "swo") == 0) {
           ts->flags |= CHIP_F_HAS_SWO_TRACING;
         } else {
+#ifndef EMBED_CHIPS
           fprintf(stderr, "Unknown flags word in %s: '%s'\n", fname, p);
+#else
+          fprintf(stderr, "Unknown flags word in %s: '%s'\n", "Chip files", p);
+#endif
         }
       }
 
@@ -215,10 +264,16 @@ void process_chipfile(char *fname) {
         fprintf(stderr, "Failed to parse uid size\n");
       }
     } else {
+#ifndef EMBED_CHIPS
       fprintf(stderr, "Unknown keyword in %s: %s\n", fname, word);
+#else
+      fprintf(stderr, "Unknown keyword in %s: %s\n", "Chip files", word);
+#endif
     }
   }
+#ifndef EMBED_CHIPS
   fclose(fp);
+#endif // !EMBED_CHIPS
   ts->next = devicelist;
   devicelist = ts;
 }
@@ -258,12 +313,15 @@ void init_chipids(char *dir_to_scan) {
 
 #endif // STLINK_HAVE_DIRENT_H
 
-#if defined(_WIN32) && !defined(STLINK_HAVE_DIRENT_H)
+#if defined(_WIN32) && !defined(STLINK_HAVE_DIRENT_H) && (!defined(EMBED_CHIPS) || (!EMBED_CHIPS))
 #include <fileapi.h>
 #include <strsafe.h>
 
-#define MY_CHIP_DIR "..\\config\\chips"
-
+//#ifndef RELEASE
+//#define MY_CHIP_DIR "..\\config\\chips"
+//#else
+//#define MY_CHIP_DIR "config\\chips"
+//#endif
 void init_chipids(char *dir_to_scan) {
   HANDLE hFind = INVALID_HANDLE_VALUE;
   WIN32_FIND_DATAA ffd;
@@ -310,5 +368,16 @@ void init_chipids(char *dir_to_scan) {
 
   FindClose(hFind);
 }
-
 #endif // defined(_WIN32) && !defined(STLINK_HAVE_DIRENT_H)
+
+#if defined(_WIN32) && !defined(STLINK_HAVE_DIRENT_H) && defined(EMBED_CHIPS)
+#include <strsafe.h>
+
+void init_chipids(char* dir_to_scan) {
+  for (uint32_t i = 0; i < CHIPS_CNT; i++) {
+    process_chipfile(&i);
+  }
+}
+#endif
+
+
